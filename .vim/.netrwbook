@@ -1,0 +1,1 @@
+let g:netrw_bookmarklist= ['/Library/Server/Web/Data/Sites/Default', '/Volumes/Mechanical/Saffron/GIT/Silverlight Player', 'sftp://czarek@freebsd83//usr/services/kdrptpp/dev/p/test/sqlite/', 'sftp://czarek@freebsd83/sdnhari/', 'sftp://root@5.sdsdece.sdgtl.net//usr/services/sdsdece/5/', 'sftp://root@uvtest-coord.sdgtl.net//usr/services/sdnhari/dev/']
