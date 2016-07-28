@@ -12,8 +12,8 @@ call pathogen#helptags()
 
 syntax on
 
-" set mouse=a
-" set ttymouse=xterm2
+set mouse=a
+set ttymouse=xterm2
 set pastetoggle=<f2>
 
 nnoremap v <c-v>
@@ -75,8 +75,8 @@ endif
 
 nnoremap <silent> <space> :nohlsearch<bar>:echo<cr>
 
-highlight WhitespaceEOL ctermbg=red guibg=red
-match WhitespaceEOL /\s\+$/
+" highlight WhitespaceEOL ctermbg=red guibg=red
+" match WhitespaceEOL /\s\+$/
 
 " Buffer navigation
 
