@@ -1,7 +1,0 @@
-let g:netrw_dirhistmax  =10
-let g:netrw_dirhist_cnt =5
-let g:netrw_dirhist_1='sftp://czarek@sdnhari/sdnhari/cgi/core/'
-let g:netrw_dirhist_2='sftp://czarek@sdnhari/sdnhari/cgi/core/handlers/'
-let g:netrw_dirhist_3='sftp://czarek@sdnhari/sdnhari/cgi/core/'
-let g:netrw_dirhist_4='sftp://czarek@sdnhari/sdnhari/cgi/'
-let g:netrw_dirhist_5='sftp://czarek@sdnhari/sdnhari/cgi/cms/'
