@@ -76,6 +76,8 @@ vim.keymap.set('n', 'tp', '<Cmd>tabp<CR>')
 -- ============================================================
 
 vim.keymap.set('n', '<C-p>', function() require('mini.pick').builtin.files() end)
+vim.opt.ignorecase = true
+vim.opt.smartcase = true
 
 -- ============================================================
 -- File explorer (mini.files)
