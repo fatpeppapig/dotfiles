@@ -55,7 +55,6 @@ vim.opt.clipboard = 'unnamedplus'
 -- Colors
 -- ============================================================
 
-
 vim.cmd.colorscheme 'habamax'
 
 vim.keymap.set('n', '<space>', '<Cmd>nohlsearch<Bar>echo<CR>', { silent = true })
@@ -72,10 +71,20 @@ vim.keymap.set('n', 'tn', '<Cmd>tabn<CR>')
 vim.keymap.set('n', 'tp', '<Cmd>tabp<CR>')
 
 -- ============================================================
--- Fuzzy file open (mini.pick)
+-- Fuzzy file open (mini.pick, backed by find — always current,
+-- unaffected by git tracked/untracked status, hidden dirs excluded)
 -- ============================================================
 
-vim.keymap.set('n', '<C-p>', function() require('mini.pick').builtin.files() end)
+vim.keymap.set('n', '<C-p>', function()
+  local cwd = vim.fn.getcwd()
+  local items = vim.fn.systemlist(
+    "find . -type f -not -path '*/node_modules/*' -not -path '*/dist/*' -not -path '*/build/*' -not -path '*/.*'"
+  )
+  require('mini.pick').start({
+    source = { items = items, name = 'Files', cwd = cwd },
+  })
+end)
+
 vim.opt.ignorecase = true
 vim.opt.smartcase = true
 
@@ -106,17 +115,72 @@ local function root_dir(start, names)
   return found and vim.fs.dirname(found) or vim.fs.dirname(abs)
 end
 
-local function local_bin(root, name)
-  local path = root .. '/node_modules/.bin/' .. name
-  if vim.fn.filereadable(path) == 1 then return path end
+-- Walks upward from a file (not a directory) looking for
+-- node_modules/.bin/NAME, past monorepo/workspace boundaries where
+-- binaries get hoisted to a root above the nearest package.json
+local function local_bin(start, name)
+  local dir = vim.fs.dirname(vim.fn.fnamemodify(start, ':p'))
+  while dir ~= '/' do
+    local path = dir .. '/node_modules/.bin/' .. name
+    if vim.fn.filereadable(path) == 1 then return path end
+    dir = vim.fs.dirname(dir)
+  end
   return name
 end
 
-local function local_tsserver_lib(root)
-  local path = root .. '/node_modules/typescript/lib/tsserver.js'
-  if vim.fn.filereadable(path) == 1 then return path end
+-- Classic TypeScript (<=6) ships tsserver.js; TypeScript 7+'s native
+-- Go compiler does not — this distinguishes which LSP strategy applies
+local function local_tsserver_lib(start)
+  local dir = vim.fs.dirname(vim.fn.fnamemodify(start, ':p'))
+  while dir ~= '/' do
+    local path = dir .. '/node_modules/typescript/lib/tsserver.js'
+    if vim.fn.filereadable(path) == 1 then return path end
+    dir = vim.fs.dirname(dir)
+  end
   return nil
 end
+
+-- True if this project has TypeScript at all, classic or native —
+-- used to gate plain .js files, which should get LSP if TS is
+-- present (it powers JS intelligence too) but stay silent if not,
+-- rather than falling back to some unrelated global `tsc`
+local function has_local_typescript(start)
+  return local_tsserver_lib(start) ~= nil or local_bin(start, 'tsc') ~= 'tsc'
+end
+
+local function start_ts_lsp(args)
+  local root = root_dir(args.file, { 'package.json', 'tsconfig.json' })
+  local tslib = local_tsserver_lib(args.file)
+  if tslib then
+    -- Classic TypeScript (<=6): typescript-language-server wraps tsserver.js
+    vim.lsp.start({
+      name = 'ts-ls',
+      cmd = { local_bin(args.file, 'typescript-language-server'), '--stdio' },
+      root_dir = root,
+      init_options = { tsserver = { path = tslib } },
+    })
+  else
+    -- TypeScript 7+ (native Go compiler): tsc speaks LSP directly now
+    vim.lsp.start({
+      name = 'tsgo',
+      cmd = { local_bin(args.file, 'tsc'), '--lsp', '--stdio' },
+      root_dir = root,
+    })
+  end
+end
+
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = { 'typescript', 'typescriptreact' },
+  callback = start_ts_lsp,
+})
+
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = { 'javascript', 'javascriptreact' },
+  callback = function(args)
+    if not has_local_typescript(args.file) then return end  -- plain JS, no TS anywhere: skip quietly
+    start_ts_lsp(args)
+  end,
+})
 
 vim.api.nvim_create_autocmd('FileType', {
   pattern = 'rust',
@@ -130,26 +194,12 @@ vim.api.nvim_create_autocmd('FileType', {
 })
 
 vim.api.nvim_create_autocmd('FileType', {
-  pattern = { 'typescript', 'typescriptreact', 'javascript', 'javascriptreact' },
-  callback = function(args)
-    local root = root_dir(args.file, { 'package.json', 'tsconfig.json' })
-    local tslib = local_tsserver_lib(root)
-    vim.lsp.start({
-      name = 'ts-ls',
-      cmd = { local_bin(root, 'typescript-language-server'), '--stdio' },
-      root_dir = root,
-      init_options = tslib and { tsserver = { path = tslib } } or nil,
-    })
-  end,
-})
-
-vim.api.nvim_create_autocmd('FileType', {
   pattern = 'svelte',
   callback = function(args)
     local root = root_dir(args.file, { 'package.json', 'svelte.config.js' })
     vim.lsp.start({
       name = 'svelte-ls',
-      cmd = { local_bin(root, 'svelteserver'), '--stdio' },
+      cmd = { local_bin(args.file, 'svelteserver'), '--stdio' },
       root_dir = root,
     })
   end,
