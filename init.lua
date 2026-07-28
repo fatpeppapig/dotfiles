@@ -51,6 +51,8 @@ vim.opt.swapfile = false
 
 vim.opt.clipboard = 'unnamedplus'
 
+vim.g.mapleader = ' '
+
 -- ============================================================
 -- Colors
 -- ============================================================
@@ -73,12 +75,18 @@ vim.keymap.set('n', 'tp', '<Cmd>tabp<CR>')
 -- ============================================================
 -- Fuzzy file open (mini.pick, backed by find — always current,
 -- unaffected by git tracked/untracked status, hidden dirs excluded)
+--
+-- Uses -prune rather than -not -path: the earlier version only
+-- filtered node_modules/etc out of the *results*, but still walked
+-- every file inside those directories first — -prune stops find
+-- from descending into them at all, which is what actually made
+-- this slow on any real project.
 -- ============================================================
 
 vim.keymap.set('n', '<C-p>', function()
   local cwd = vim.fn.getcwd()
   local items = vim.fn.systemlist(
-    "find . -type f -not -path '*/node_modules/*' -not -path '*/dist/*' -not -path '*/build/*' -not -path '*/.*'"
+    [[find . -mindepth 1 \( -name node_modules -o -name .git -o -name dist -o -name build -o -name '.*' \) -prune -o -type f -print]]
   )
   require('mini.pick').start({
     source = { items = items, name = 'Files', cwd = cwd },
@@ -104,6 +112,14 @@ vim.api.nvim_create_autocmd('User', {
     end, { buffer = buf_id })
   end,
 })
+
+-- ============================================================
+-- Diagnostics — view the message under the cursor, or list every
+-- diagnostic in the buffer in a browsable location list
+-- ============================================================
+
+vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float)
+vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist)
 
 -- ============================================================
 -- LSP
@@ -228,20 +244,30 @@ local function local_prettier(start)
   return nil
 end
 
+local function format_with_prettier(prettier, file, bufnr)
+  local project_root = prettier:gsub('/node_modules/%.bin/prettier$', '')
+  local content = table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), '\n') .. '\n'
+  local result = vim.system(
+    { prettier, '--stdin-filepath', file },
+    { stdin = content, text = true, cwd = project_root }
+  ):wait()
+  if result.code == 0 then
+    local view = vim.fn.winsaveview()
+    local new_lines = vim.split((result.stdout:gsub('\n$', '')), '\n')
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, new_lines)
+    vim.fn.winrestview(view)
+  else
+    vim.notify('prettier failed: ' .. (result.stderr or 'unknown error'), vim.log.levels.WARN)
+  end
+end
+
 vim.api.nvim_create_autocmd('BufWritePre', {
   pattern = { '*.ts', '*.tsx', '*.js', '*.jsx', '*.json', '*.css', '*.scss', '*.md', '*.svelte' },
   callback = function(args)
     local abs_file = vim.fn.fnamemodify(args.file, ':p')
     local prettier = local_prettier(abs_file)
     if prettier then
-      local view = vim.fn.winsaveview()
-      vim.cmd('silent! %!' .. prettier .. ' --stdin-filepath ' .. vim.fn.shellescape(abs_file))
-      if vim.v.shell_error ~= 0 then
-        vim.cmd('undo')
-        vim.notify('prettier failed, changes reverted', vim.log.levels.WARN)
-      else
-        vim.fn.winrestview(view)
-      end
+      format_with_prettier(prettier, abs_file, args.buf)
     else
       vim.lsp.buf.format({ async = false })
     end
