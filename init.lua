@@ -51,7 +51,7 @@ vim.opt.swapfile = false
 
 vim.opt.clipboard = 'unnamedplus'
 
-vim.g.mapleader = ' '
+vim.g.mapleader = ';'
 
 -- ============================================================
 -- Colors
@@ -229,6 +229,13 @@ vim.api.nvim_create_autocmd('LspAttach', {
     vim.keymap.set('n', '[d', function() vim.diagnostic.jump({ count = -1, float = true }) end, { buffer = buf })
   end,
 })
+
+vim.keymap.set('n', '<leader>i', function()
+  vim.lsp.buf.code_action({
+    context = { only = { 'source.addMissingImports.ts', 'source.addMissingImports' } },
+    apply = true,
+  })
+end)
 
 -- ============================================================
 -- Format on save
