@@ -72,6 +72,35 @@ vim.keymap.set('n', 'bd', '<Cmd>bd<CR>')
 vim.keymap.set('n', 'tn', '<Cmd>tabn<CR>')
 vim.keymap.set('n', 'tp', '<Cmd>tabp<CR>')
 
+vim.keymap.set('n', '<leader>/', function()
+  local pattern = vim.fn.input('Grep: ')
+  if pattern == '' then return end
+
+  local root = vim.fn.getcwd()
+
+  local cmd = string.format(
+    "grep -rn -E --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=build --exclude-dir='.*' -- %s %s",
+    vim.fn.shellescape(pattern), vim.fn.shellescape(root)
+  )
+  local items = vim.fn.systemlist(cmd)
+
+  require('mini.pick').start({
+    source = {
+      items = items,
+      name = 'Grep: ' .. pattern,
+      cwd = root,
+      choose = function(item)
+        local f, lnum = item:match('^(.-):(%d+):')
+        if not f then return end
+        vim.schedule(function()
+          vim.cmd('edit ' .. vim.fn.fnameescape(f))
+          vim.api.nvim_win_set_cursor(0, { tonumber(lnum), 0 })
+        end)
+      end,
+    },
+  })
+end)
+
 -- ============================================================
 -- Fuzzy file open (mini.pick, backed by find — always current,
 -- unaffected by git tracked/untracked status, hidden dirs excluded)
