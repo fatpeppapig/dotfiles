@@ -57,6 +57,18 @@ vim.g.mapleader = ';'
 -- Colors
 -- ============================================================
 
+vim.api.nvim_create_autocmd("ColorScheme", {
+  callback = function()
+    for _, g in ipairs({ "Normal", "NormalNC", "NormalFloat", "SignColumn", "EndOfBuffer" }) do
+      vim.api.nvim_set_hl(0, g, { bg = "none" })
+    end
+
+    for _, g in ipairs({ "CursorLine", "CursorLineNr" }) do
+      vim.api.nvim_set_hl(0, g, { bg = "#4a4a4a" })
+    end
+  end,
+})
+
 vim.cmd.colorscheme 'habamax'
 
 vim.keymap.set('n', '<space>', '<Cmd>nohlsearch<Bar>echo<CR>', { silent = true })
@@ -71,6 +83,11 @@ vim.keymap.set('n', 'bd', '<Cmd>bd<CR>')
 
 vim.keymap.set('n', 'tn', '<Cmd>tabn<CR>')
 vim.keymap.set('n', 'tp', '<Cmd>tabp<CR>')
+
+vim.keymap.set('n', '<leader>w', function()
+  vim.opt.wrap = not vim.opt.wrap:get()
+  vim.opt.linebreak = vim.opt.wrap:get()
+end)
 
 vim.keymap.set('n', '<leader>/', function()
   local pattern = vim.fn.input('Grep: ')

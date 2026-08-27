@@ -1,0 +1,2 @@
+# Remap Dictation key to normal F5 on a MacBook keyboard
+hidutil property --set '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0xC000000CF,"HIDKeyboardModifierMappingDst":0x70000003E}]}' >/dev/null &
