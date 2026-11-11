@@ -4,9 +4,6 @@
 
 vim.pack.add({
   'https://github.com/nvim-mini/mini.nvim',
-  'https://github.com/leafgarland/typescript-vim',
-  'https://github.com/pangloss/vim-javascript',
-  'https://github.com/mxw/vim-jsx',
   'https://github.com/evanleck/vim-svelte',
 })
 
@@ -265,6 +262,15 @@ vim.api.nvim_create_autocmd('FileType', {
       root_dir = root,
     })
   end,
+})
+
+vim.api.nvim_create_autocmd('FileType', {
+      pattern = { 'markdown', 'text' },
+        callback = function()
+            vim.opt_local.wrap = true
+                vim.opt_local.linebreak = true
+                    vim.opt_local.breakindent = true
+                      end,
 })
 
 vim.api.nvim_create_autocmd('LspAttach', {
